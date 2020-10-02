@@ -17,6 +17,7 @@ import time
 from datetime import datetime
 import sys
 
+import socket
 
 
 # LED display rule. Normal Off.
@@ -71,7 +72,17 @@ def startSensor():
         serSensor.exit
     """
 
+IREMOCON_ADDR='192.168.2.50'
 
+def sendIRemocon(cmd):
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    # サーバを指定
+    s.connect((IREMOCON_ADDR, 51013))
+    # サーバにメッセージを送る
+    s.send("*au\r\n".encode())
+    #s.sendall(b"*au\r\n")
+
+    #print( s.recv(1024).decode())
 
 class MyHandler(BaseHTTPRequestHandler):
     """
@@ -88,7 +99,11 @@ class MyHandler(BaseHTTPRequestHandler):
 
             # Get sensor data
 
-            if serPato.isOpen():
+            if parsed.query.isdigit():
+              # iremocon cmd
+              sendIRemocon(parsed.query)
+
+            if parsed.query.isalpha() and serPato.isOpen():
               serPato.write(str.encode(parsed.query))
 
               """
@@ -103,10 +118,11 @@ class MyHandler(BaseHTTPRequestHandler):
 
               """
 
-            response = { 'status' : 200,
-                         'result' : { 'hoge' : 100,
-                                      'bar' : 'bar' }
-                        }
+            response = {}
+            #response = { 'status' : 200,
+            #             'result' : { 'hoge' : 100,
+            #                          'bar' : 'bar' }
+            #            }
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -119,8 +135,9 @@ class MyHandler(BaseHTTPRequestHandler):
             print(type(e))
             print(e.args)
             print(e)
-            response = { 'status' : 500,
-                         'msg' : 'An error occured' }
+            response = {}
+            #response = { 'status' : 500,
+            #             'msg' : 'An error occured' }
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
