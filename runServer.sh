@@ -154,7 +154,7 @@ serPato = None
 def run(server_class=HTTPServer, handler_class=MyHandler, server_name='localhost', port=8080):
     global serPato
     # Pato Serial
-    #serPato = serial.Serial(PATO_SEREAL_ID, 19200, serial.EIGHTBITS, serial.PARITY_NONE)
+    serPato = serial.Serial(PATO_SEREAL_ID, 19200, serial.EIGHTBITS, serial.PARITY_NONE)
 
     #startSensor()
     server = server_class((server_name, port), handler_class)
