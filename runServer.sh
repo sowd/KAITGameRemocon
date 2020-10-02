@@ -1,8 +1,11 @@
 #!/usr/bin/python3
 # -*- coding:utf-8 -*-
 
-__author__ = "omori"
-__version__ = "1.0.0"
+
+PATO_SEREAL_ID="/dev/ttyUSB0"
+IREMOCON_ADDR='192.168.2.50'
+
+
 
 
 import argparse
@@ -72,17 +75,14 @@ def startSensor():
         serSensor.exit
     """
 
-IREMOCON_ADDR='192.168.2.50'
-
 def sendIRemocon(cmd):
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     # サーバを指定
     s.connect((IREMOCON_ADDR, 51013))
     # サーバにメッセージを送る
-    s.send("*au\r\n".encode())
-    #s.sendall(b"*au\r\n")
+    s.sendall( (cmd+"\r\n").encode())
 
-    #print( s.recv(1024).decode())
+    return s.recv(1024).decode()
 
 class MyHandler(BaseHTTPRequestHandler):
     """
@@ -97,11 +97,12 @@ class MyHandler(BaseHTTPRequestHandler):
 
             #print(parsed)
 
+            ret = ''
             # Get sensor data
 
-            if parsed.query.isdigit():
+            if parsed.query.startswith("*"):
               # iremocon cmd
-              sendIRemocon(parsed.query)
+              ret = sendIRemocon(parsed.query)
 
             if parsed.query.isalpha() and serPato.isOpen():
               serPato.write(str.encode(parsed.query))
@@ -118,7 +119,9 @@ class MyHandler(BaseHTTPRequestHandler):
 
               """
 
-            response = {}
+            response = {
+               'result':ret
+            }
             #response = { 'status' : 200,
             #             'result' : { 'hoge' : 100,
             #                          'bar' : 'bar' }
@@ -151,7 +154,7 @@ serPato = None
 def run(server_class=HTTPServer, handler_class=MyHandler, server_name='localhost', port=8080):
     global serPato
     # Pato Serial
-    serPato = serial.Serial("/dev/ttyUSB0", 19200, serial.EIGHTBITS, serial.PARITY_NONE)
+    #serPato = serial.Serial(PATO_SEREAL_ID, 19200, serial.EIGHTBITS, serial.PARITY_NONE)
 
     #startSensor()
     server = server_class((server_name, port), handler_class)
