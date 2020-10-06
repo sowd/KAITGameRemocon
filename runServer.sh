@@ -2,14 +2,18 @@
 # -*- coding:utf-8 -*-
 
 
-PAT_SERIAL_ID=''
 #PAT_SERIAL_ID="/dev/ttyUSB1"
+PAT_SERIAL_ID=''
 
+
+#OMRON_SERIAL_ID="/dev/ttyUSB0"
+OMRON_SERIAL_ID="/dev/serial/by-id/usb-OMRON_2JCIE-BU01_MY2SD5OO-if00-port0"
 #OMRON_SERIAL_ID=''
-OMRON_SERIAL_ID="/dev/ttyUSB0"
+
 
 IREMOCON_ADDR='192.168.2.50'
 #IREMOCON_ADDR=''
+
 
 DEFAULT_HOST_NAME='localhost'
 PORT_NUM=8081
