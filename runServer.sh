@@ -3,16 +3,12 @@
 
 
 #PAT_SERIAL_ID="/dev/ttyUSB1"
-PAT_SERIAL_ID=''
+PAT_SERIAL_ID='/dev/serial/by-id/usb-PATLITE_USB_FTDI_PATLITE-if00-port0'
 
 
 #OMRON_SERIAL_ID="/dev/ttyUSB0"
 OMRON_SERIAL_ID="/dev/serial/by-id/usb-OMRON_2JCIE-BU01_MY2SD5OO-if00-port0"
 #OMRON_SERIAL_ID=''
-
-
-IREMOCON_ADDR='192.168.2.50'
-#IREMOCON_ADDR=''
 
 
 DEFAULT_HOST_NAME='localhost'
@@ -122,35 +118,6 @@ def getSensorData(data):
     si_value_flag = str(int(hex(data[53]), 16))
     pga_flag = str(int(hex(data[54]), 16))
     seismic_intensity_flag = str(int(hex(data[55]), 16))
-    '''
-    print("")
-    print("Time measured:" + time_measured)
-    print("Temperature:" + temperature)
-    print("Relative humidity:" + relative_humidity)
-    print("Ambient light:" + ambient_light)
-    print("Barometric pressure:" + barometric_pressure)
-    print("Sound noise:" + sound_noise)
-    print("eTVOC:" + eTVOC)
-    print("eCO2:" + eCO2)
-    print("Discomfort index:" + discomfort_index)
-    print("Heat stroke:" + heat_stroke)
-    print("Vibration information:" + vibration_information)
-    print("SI value:" + si_value)
-    print("PGA:" + pga)
-    print("Seismic intensity:" + seismic_intensity)
-    print("Temperature flag:" + temperature_flag)
-    print("Relative humidity flag:" + relative_humidity_flag)
-    print("Ambient light flag:" + ambient_light_flag)
-    print("Barometric pressure flag:" + barometric_pressure_flag)
-    print("Sound noise flag:" + sound_noise_flag)
-    print("eTVOC flag:" + etvoc_flag)
-    print("eCO2 flag:" + eco2_flag)
-    print("Discomfort index flag:" + discomfort_index_flag)
-    print("Heat stroke flag:" + heat_stroke_flag)
-    print("SI value flag:" + si_value_flag)
-    print("PGA flag:" + pga_flag)
-    print("Seismic intensity flag:" + seismic_intensity_flag)
-    '''
 
     return {
 	 "time_measured":time_measured
@@ -181,20 +148,22 @@ def getSensorData(data):
 	,"seismic_intensity_flag":seismic_intensity_flag
     }
 
+def sendIRemocon(params):
+  ps = params.split(',')
+  cmd = ps[0]
+  iRemoconAddr = ps[1]
 
+  print(iRemoconAddr+'<'+cmd)
 
+  #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+  with socket.socket() as s:
+    s.settimeout(10)
+    s.connect((iRemoconAddr, 51013))
+    s.send( (cmd+"\r\n").encode())
 
+    ret = s.recv(1024).decode()
 
-
-
-def sendIRemocon(cmd):
-  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    # サーバを指定
-    s.connect((IREMOCON_ADDR, 51013))
-    # サーバにメッセージを送る
-    s.sendall( (cmd+"\r\n").encode())
-
-    return s.recv(1024).decode()
+    return ret
 
 class MyHandler(BaseHTTPRequestHandler):
     """
@@ -209,16 +178,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
             ret = ''
 
-            if IREMOCON_ADDR != '' and parsed.query.startswith("*"):
-              print('Accessing IRemocon.')
-              # iremocon cmd
-              ret = sendIRemocon(parsed.query)
-
-            elif PAT_SERIAL_ID != '' and parsed.query.isalpha() and serPato.isOpen():
-              print('Accessing lamp.')
-              serPato.write(str.encode(parsed.query))
-
-            elif OMRON_SERIAL_ID != '':
+            if OMRON_SERIAL_ID != '' and parsed.query.startswith("callback="):
               print('Accessing the sensor.')
               # Get Latest data Long.
               command = bytearray([0x52, 0x42, 0x05, 0x00, 0x01, 0x21, 0x50])
@@ -226,11 +186,28 @@ class MyHandler(BaseHTTPRequestHandler):
               tmp = serSensor.write(command)
               time.sleep(0.1)
               data = serSensor.read(serSensor.inWaiting())
-              ret = getSensorData(data)
-              #time.sleep(1)
+              sensorData = getSensorData(data)
+
+              # Respond by JSONP
+              self.send_response(200)
+              self.send_header('Content-type', 'application/x-javascript')
+              self.end_headers()
+              responseBody = parsed.query[9:]+'('+json.dumps(sensorData)+')'
+
+              self.wfile.write(responseBody.encode('utf-8'))
+
+              return
+
+            elif parsed.query.startswith("*"):
+              print('Accessing IRemocon.')
+              ret = sendIRemocon(parsed.query)
+
+            elif PAT_SERIAL_ID != '' and parsed.query.isalpha() and serPato.isOpen():
+              print('Accessing lamp.')
+              serPato.write(str.encode(parsed.query))
 
             response = {
-               'result':ret
+              'result':ret
             }
 
             self.send_response(200)
@@ -261,7 +238,6 @@ serPato = None
 def run(server_class=HTTPServer, handler_class=MyHandler, server_name=DEFAULT_HOST_NAME, port=PORT_NUM):
     print('Patlite serial ID: '+PAT_SERIAL_ID);
     print('Omron sensor serial ID: '+OMRON_SERIAL_ID);
-    print('IRemocon IP addr: '+IREMOCON_ADDR);
     print('===========');
     print('Starting API server at '+server_name+':'+str(port));
     print(' (No other host name can be used for REST access)');
