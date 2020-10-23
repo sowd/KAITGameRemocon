@@ -20,9 +20,9 @@ curl localhost:8081?h        # off
 
 
 ```
-curl localhost:8081?*au,192.168.2.50    # 接続テスト
-curl localhost:8081?*ic;50,192.168.2.50    # 50番に学習開始
-curl localhost:8081?*is;50,192.168.2.50    # 50番に学習されているものを送信
+curl 'localhost:8081?*au,192.168.2.50'    # 接続テスト
+curl 'localhost:8081?*ic;50,192.168.2.50'    # 50番に学習開始
+curl 'localhost:8081?*is;50,192.168.2.50'    # 50番に学習されているものを送信
 
 ```
 
